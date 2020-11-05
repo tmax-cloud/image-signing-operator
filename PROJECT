@@ -1,0 +1,10 @@
+layout: go.kubebuilder.io/v2
+projectName: image-signing-operator
+repo: github.com/tmax-cloud/image-signing-operator
+resources:
+- group: tmax.io
+  kind: ImageSign
+  version: v1
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}

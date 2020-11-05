@@ -1,0 +1,7 @@
+apiVersion: tmax.io/v1
+kind: ImageSign
+metadata:
+  name: imagesign-sample
+spec:
+  # Add fields here
+  foo: bar
