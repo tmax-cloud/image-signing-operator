@@ -1,4 +1,6 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
 - tmax.io_v1_imagesign.yaml
+- tmax.io_v1_signerkey.yaml
+- tmax.io_v1_imagesignrequest.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

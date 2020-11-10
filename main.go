@@ -47,7 +47,7 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-addr", ":18080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -67,12 +67,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.ImageSignReconciler{
+	if err = (&controllers.ImageSignerReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ImageSign"),
+		Log:    ctrl.Log.WithName("controllers").WithName("ImageSigner"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ImageSign")
+		setupLog.Error(err, "unable to create controller", "controller", "ImageSigner")
+		os.Exit(1)
+	}
+	if err = (&controllers.ImageSignRequestReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("ImageSignRequest"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ImageSignRequest")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

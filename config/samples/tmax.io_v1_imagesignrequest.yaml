@@ -1,0 +1,14 @@
+apiVersion: tmax.io/v1
+kind: ImageSignRequest
+metadata:
+  name: req-test
+  namespace: reg-test
+spec:
+  image: alpine:3
+  pvcName: test-pvc
+  registryLogin:
+    certSecretName: hpcd-tmax2-registry
+    dcjSecretName: hpcd-registry-tmax2-registry
+    name: tmax2-registry
+    namespace: reg-test
+    signer: yun

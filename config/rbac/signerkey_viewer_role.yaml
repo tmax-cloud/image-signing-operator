@@ -1,0 +1,20 @@
+# permissions for end users to view signerkeys.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: signerkey-viewer-role
+rules:
+- apiGroups:
+  - tmax.io
+  resources:
+  - signerkeys
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - tmax.io
+  resources:
+  - signerkeys/status
+  verbs:
+  - get
