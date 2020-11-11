@@ -29,7 +29,8 @@ type SignerKeySpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of SignerKey. Edit SignerKey_types.go to remove/update
-	Root    TrustKey            `json:"root,omitempty"`
+	Root TrustKey `json:"root,omitempty"`
+	// Targets is {namespace/registryName/imageName: TrustKey{}, ...}
 	Targets map[string]TrustKey `json:"targets,omitempty"`
 }
 

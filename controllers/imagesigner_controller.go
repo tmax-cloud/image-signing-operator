@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -48,10 +47,7 @@ func (r *ImageSignerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	// get image signer
 	signer := &tmaxiov1.ImageSigner{}
 	if err := r.Get(context.TODO(), req.NamespacedName, signer); err != nil {
-		if errors.IsNotFound(err) {
-			log.Error(err, "Not Found Error")
-			return ctrl.Result{}, nil
-		}
+		log.Error(err, "")
 		return ctrl.Result{}, err
 	}
 
@@ -64,7 +60,7 @@ func (r *ImageSignerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	}
 
 	// if signer key is not exist, create root key
-	signCtl := controller.NewSigningController(r.Client, signer, trust.NewTrustPass(), "", "reg-test")
+	signCtl := controller.NewSigningController(r.Client, signer, trust.NewTrustPass(), "", "")
 	cmdOpt := &controller.CommandOpt{
 		Phrase: signCtl.Phrase,
 	}
@@ -79,7 +75,7 @@ func (r *ImageSignerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	defer signCtl.Close()
 
 	if err := signCtl.CreateRootKey(); err != nil {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil

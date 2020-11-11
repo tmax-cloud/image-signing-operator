@@ -154,7 +154,7 @@ func (c *SigningController) CreateRootKey() error {
 	return nil
 }
 
-func (c *SigningController) AddTargetKey(originalKey *apiv1.SignerKey, imageName string, phrase trust.TrustPass) error {
+func (c *SigningController) AddTargetKey(originalKey *apiv1.SignerKey, targetName string, phrase trust.TrustPass) error {
 	targetKey, err := c.readTrustKey(trust.TrustRoleTarget)
 	if err != nil {
 		log.Error(err, "read key error")
@@ -164,7 +164,7 @@ func (c *SigningController) AddTargetKey(originalKey *apiv1.SignerKey, imageName
 	target := originalKey.DeepCopy()
 	originObject := client.MergeFrom(originalKey)
 
-	target.Spec.Targets[imageName] = *targetKey
+	target.Spec.Targets[targetName] = *targetKey
 
 	if err := c.Cmder.client.Patch(context.TODO(), target, originObject); err != nil {
 		log.Error(err, "patch error")

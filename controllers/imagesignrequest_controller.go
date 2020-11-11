@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -50,33 +49,29 @@ func (r *ImageSignRequestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	log.Info("get image sign request")
 	signReq := &tmaxiov1.ImageSignRequest{}
 	if err := r.Get(context.TODO(), req.NamespacedName, signReq); err != nil {
-		if errors.IsNotFound(err) {
-			log.Error(err, "Not Found Error")
-			return ctrl.Result{}, nil
-		}
-		return ctrl.Result{}, err
+		log.Error(err, "")
+		makeResponse(signReq, false, err.Error(), "")
+		return ctrl.Result{}, nil
 	}
+
+	defer response(r.Client, signReq)
 
 	// get image signer
 	log.Info("get image signer")
 	signer := &tmaxiov1.ImageSigner{}
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: signReq.Spec.Signer}, signer); err != nil {
-		if errors.IsNotFound(err) {
-			log.Error(err, "Not Found Error")
-			return ctrl.Result{}, nil
-		}
-		return ctrl.Result{}, err
+		log.Error(err, "")
+		makeResponse(signReq, false, err.Error(), "")
+		return ctrl.Result{}, nil
 	}
 
 	// get sign key
 	log.Info("get sign key")
 	signerKey := &tmaxiov1.SignerKey{}
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: signReq.Spec.Signer}, signerKey); err != nil {
-		if errors.IsNotFound(err) {
-			log.Error(err, "Not Found Error")
-			return ctrl.Result{}, nil
-		}
-		return ctrl.Result{}, err
+		log.Error(err, "")
+		makeResponse(signReq, false, err.Error(), "")
+		return ctrl.Result{}, nil
 	}
 
 	// get trust pass
@@ -84,7 +79,7 @@ func (r *ImageSignRequestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	phrase := make(trust.TrustPass)
 	addedTargetKey := false
 	phrase[trust.DctEnvKeyRoot] = signerKey.Spec.Root.PassPhrase
-	if _, ok := signerKey.Spec.Targets[signReq.Spec.Image]; ok {
+	if _, ok := signerKey.Spec.Targets[buildTargetName(signReq)]; ok {
 		phrase[trust.DctEnvKeyTarget] = signerKey.Spec.Targets[signReq.Spec.Image].PassPhrase
 	} else {
 		phrase.AssignNewTargetPass()
@@ -103,24 +98,35 @@ func (r *ImageSignRequestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	log.Info("dind start")
 	if err := signCtl.Start(cmdOpt); err != nil {
 		log.Error(err, "dind container start failed")
+		makeResponse(signReq, false, err.Error(), "")
+		return ctrl.Result{}, nil
 	}
 
 	if signCtl.IsRunnging {
 		log.Info("dind is running")
 	}
-	// defer signCtl.Close()
+	defer signCtl.Close()
 
 	log.Info("sign image")
 	imageName, imageTag := utils.ParseImage(signReq.Spec.Image)
 	if err := signCtl.SignImage(imageName, imageTag); err != nil {
+		makeResponse(signReq, false, err.Error(), "")
 		return ctrl.Result{}, nil
 	}
 
 	if addedTargetKey {
 		log.Info("add target key to signerkey")
-		signCtl.AddTargetKey(signerKey, imageName, phrase)
+		if err := signCtl.AddTargetKey(
+			signerKey,
+			buildTargetName(signReq),
+			phrase,
+		); err != nil {
+			makeResponse(signReq, false, err.Error(), "")
+			return ctrl.Result{}, nil
+		}
 	}
 
+	makeResponse(signReq, true, "", "")
 	return ctrl.Result{}, nil
 }
 
@@ -128,4 +134,31 @@ func (r *ImageSignRequestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&tmaxiov1.ImageSignRequest{}).
 		Complete(r)
+}
+
+func buildTargetName(signReq *tmaxiov1.ImageSignRequest) string {
+	imageName, _ := utils.ParseImage(signReq.Spec.Image)
+	return trust.BuildTargetName(
+		signReq.Spec.RegistryLogin.Name,
+		signReq.Spec.RegistryLogin.Namespace,
+		imageName,
+	)
+}
+
+func response(c client.Client, signReq *tmaxiov1.ImageSignRequest) error {
+	if err := c.Status().Update(context.TODO(), signReq); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func makeResponse(signReq *tmaxiov1.ImageSignRequest, result bool, reason, message string) {
+	if result {
+		signReq.Status.Result = tmaxiov1.ResponseResultSuccess
+	} else {
+		signReq.Status.Result = tmaxiov1.ResponseResultFail
+	}
+	signReq.Status.Reason = reason
+	signReq.Status.Message = message
 }

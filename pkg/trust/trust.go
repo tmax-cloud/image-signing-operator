@@ -1,6 +1,10 @@
 package trust
 
-import "github.com/tmax-cloud/image-signing-operator/internal/utils"
+import (
+	"path"
+
+	"github.com/tmax-cloud/image-signing-operator/internal/utils"
+)
 
 const (
 	DctEnvKeyRoot   = "DOCKER_CONTENT_TRUST_ROOT_PASSPHRASE"
@@ -28,4 +32,8 @@ func NewTrustPass() TrustPass {
 
 func (t TrustPass) AssignNewTargetPass() {
 	t[DctEnvKeyTarget] = utils.RandomString(12)
+}
+
+func BuildTargetName(regName, namespace, imageName string) string {
+	return path.Join(namespace, regName, imageName)
 }

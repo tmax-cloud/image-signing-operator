@@ -29,10 +29,11 @@ type ImageSignRequestSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of ImageSignRequest. Edit ImageSignRequest_types.go to remove/update
-	RegistryLogin RegistryLogin `json:"registryLogin,omitempty"`
-	Image         string        `json:"image"`
-	PvcName       string        `json:"pvcName"`
-	Signer        string        `json:"signer"`
+	RegistryLogin `json:"registryLogin,omitempty"`
+	// Image example: alpine:3
+	Image   string `json:"image"`
+	PvcName string `json:"pvcName"`
+	Signer  string `json:"signer"`
 }
 
 type RegistryLogin struct {
@@ -46,6 +47,21 @@ type RegistryLogin struct {
 type ImageSignRequestStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	ImageSignResponse `json:"imageSignResponse,omitempty"`
+}
+
+type ResponseResult string
+
+const (
+	ResponseResultSuccess = ResponseResult("Success")
+	ResponseResultFail    = ResponseResult("Fail")
+)
+
+type ImageSignResponse struct {
+	// Result: Success / Fail
+	Result  ResponseResult `json:"result,omitempty"`
+	Reason  string         `json:"reason,omitempty"`
+	Message string         `json:"message,omitempty"`
 }
 
 // +kubebuilder:object:root=true
