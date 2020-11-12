@@ -49,7 +49,7 @@ type SignerKeyStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:resource:scope=Cluster,shortName=sk
 
 // SignerKey is the Schema for the signerkeys API
 type SignerKey struct {

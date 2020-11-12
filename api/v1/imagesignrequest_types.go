@@ -47,7 +47,7 @@ type RegistryLogin struct {
 type ImageSignRequestStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	ImageSignResponse `json:"imageSignResponse,omitempty"`
+	*ImageSignResponse `json:"imageSignResponse,omitempty"`
 }
 
 type ResponseResult string
@@ -66,6 +66,7 @@ type ImageSignResponse struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=isr
 
 // ImageSignRequest is the Schema for the imagesignrequests API
 type ImageSignRequest struct {

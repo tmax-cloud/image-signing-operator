@@ -1,6 +1,8 @@
 package schemes
 
 import (
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -65,13 +67,19 @@ func WithPvc(pvcName string) PodOption {
 	}
 }
 
-func WithLifeCycle() PodOption {
+func WithLifeCycle(cmd []string) PodOption {
 	return func(pod *corev1.Pod) {
+		execCmd := "update-ca-certificates; mkdir -p /root/.docker/trust/private"
+
+		if len(cmd) > 0 {
+			cmd = append([]string{execCmd}, cmd...)
+			execCmd = strings.Join(cmd, "; ")
+		}
+
 		pod.Spec.Containers[0].Lifecycle = &corev1.Lifecycle{
 			PostStart: &corev1.Handler{
 				Exec: &corev1.ExecAction{
-					Command: []string{"/bin/sh", "-c", "certificate-update; mkdir /root/.docker; cp /home/dockremap/.dockerconfigjson /root/.docker/config.json"},
-					// Command: []string{"/bin/sh", "-c", "mkdir /tmp/image; mkdir /tmp/config"},
+					Command: []string{"/bin/sh", "-c", execCmd},
 				},
 			},
 		}

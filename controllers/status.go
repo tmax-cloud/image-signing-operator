@@ -17,6 +17,7 @@ func updateSignerStatus(c client.Client, signer *tmaxiov1.ImageSigner) error {
 }
 
 func makeSignerStatus(signer *tmaxiov1.ImageSigner, created bool, reason, message string, key *tmaxiov1.TrustKey) {
+	signer.Status.SignerKeyState = &tmaxiov1.SignerKeyState{}
 	if created {
 		signer.Status.Created = true
 		signer.Status.CreatedAt = metav1.Now()
@@ -37,6 +38,7 @@ func response(c client.Client, signReq *tmaxiov1.ImageSignRequest) error {
 }
 
 func makeResponse(signReq *tmaxiov1.ImageSignRequest, result bool, reason, message string) {
+	signReq.Status.ImageSignResponse = &tmaxiov1.ImageSignResponse{}
 	if result {
 		signReq.Status.Result = tmaxiov1.ResponseResultSuccess
 	} else {

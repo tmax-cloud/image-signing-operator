@@ -55,6 +55,9 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
+	// test
+	os.Setenv("OPERATOR_NAMESPACE", "reg-test")
+
 	if len(os.Getenv("OPERATOR_NAMESPACE")) == 0 {
 		os.Setenv("OPERATOR_NAMESPACE", "registry-system")
 	}
