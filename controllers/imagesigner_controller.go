@@ -50,6 +50,7 @@ func (r *ImageSignerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		log.Error(err, "")
 		return ctrl.Result{}, err
 	}
+	defer updateSignerStatus(r.Client, signer)
 
 	// check if signer key is exist
 	signerKey := &tmaxiov1.SignerKey{}
@@ -60,23 +61,31 @@ func (r *ImageSignerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	}
 
 	// if signer key is not exist, create root key
-	signCtl := controller.NewSigningController(r.Client, signer, trust.NewTrustPass(), "", "")
+	signCtl := controller.NewSigningController(r.Client, signer, trust.NewTrustPass(), "", "", "")
 	cmdOpt := &controller.CommandOpt{
 		Phrase: signCtl.Phrase,
 	}
 	log.Info("dind start")
 	if err := signCtl.Start(cmdOpt); err != nil {
 		log.Error(err, "dind container start failed")
-	}
-
-	if signCtl.IsRunnging {
-		log.Info("dind is running")
+		makeSignerStatus(signer, false, err.Error(), "", nil)
+		return ctrl.Result{}, nil
 	}
 	defer signCtl.Close()
 
-	if err := signCtl.CreateRootKey(); err != nil {
+	if !signCtl.IsRunnging {
+		makeSignerStatus(signer, false, "dind pod is not running", "", nil)
+		return ctrl.Result{}, nil
+	}
+	log.Info("dind is running")
+
+	rootKey, err := signCtl.CreateRootKey(signer, r.Scheme)
+	if err != nil {
+		makeSignerStatus(signer, false, err.Error(), "", nil)
 		return ctrl.Result{}, err
 	}
+
+	makeSignerStatus(signer, true, "", "", rootKey)
 
 	return ctrl.Result{}, nil
 }
@@ -84,5 +93,6 @@ func (r *ImageSignerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 func (r *ImageSignerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&tmaxiov1.ImageSigner{}).
+		Owns(&tmaxiov1.SignerKey{}).
 		Complete(r)
 }

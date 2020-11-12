@@ -36,8 +36,8 @@ type SignerKeySpec struct {
 
 // TrustKey defines key and value set
 type TrustKey struct {
+	ID         string `json:"id"`
 	Key        string `json:"key"`
-	Value      string `json:"value"`
 	PassPhrase string `json:"passPhrase"`
 }
 

@@ -29,7 +29,8 @@ type KubeCommander struct {
 	namespace, pod, container string
 }
 
-// NewKubeCommander is
+// NewKubeCommander create KubeCommander
+// if requestNamespace is empty string, get operator's namepsace
 func NewKubeCommander(c client.Client, namespace, pod string) *KubeCommander {
 	if len(namespace) == 0 {
 		namespace = os.Getenv("OPERATOR_NAMESPACE")

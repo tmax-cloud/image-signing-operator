@@ -37,6 +37,7 @@ spec:
           description: ImageSignRequestSpec defines the desired state of ImageSignRequest
           properties:
             image:
+              description: 'Image example: alpine:3'
               type: string
             pvcName:
               type: string
@@ -52,14 +53,11 @@ spec:
                   type: string
                 namespace:
                   type: string
-                url:
-                  type: string
               required:
               - certSecretName
               - dcjSecretName
               - name
               - namespace
-              - url
               type: object
             signer:
               type: string
@@ -70,6 +68,20 @@ spec:
           type: object
         status:
           description: ImageSignRequestStatus defines the observed state of ImageSignRequest
+          properties:
+            imageSignResponse:
+              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                of cluster Important: Run "make" to regenerate code after modifying
+                this file'
+              properties:
+                message:
+                  type: string
+                reason:
+                  type: string
+                result:
+                  description: 'Result: Success / Fail'
+                  type: string
+              type: object
           type: object
       type: object
   version: v1

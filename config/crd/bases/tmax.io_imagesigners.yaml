@@ -49,6 +49,27 @@ spec:
           type: object
         status:
           description: ImageSignerStatus defines the observed state of ImageSigner
+          properties:
+            signerKeyState:
+              properties:
+                created:
+                  type: boolean
+                createdAt:
+                  format: date-time
+                  type: string
+                message:
+                  type: string
+                reason:
+                  type: string
+                rootKeyId:
+                  type: string
+              required:
+              - created
+              - createdAt
+              - rootKeyId
+              type: object
+          required:
+          - signerKeyState
           type: object
       type: object
   version: v1

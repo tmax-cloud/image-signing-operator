@@ -23,6 +23,8 @@ type RegCtl struct {
 	reg    *apiv1.Registry
 }
 
+// NewRegCtl is a controller for registry
+// if registryName or registryNamespace is empty string, RegCtl is nil
 func NewRegCtl(c client.Client, regName, namespace string) *RegCtl {
 	if len(regName) == 0 || len(namespace) == 0 {
 		return nil

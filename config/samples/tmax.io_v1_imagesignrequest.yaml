@@ -11,4 +11,4 @@ spec:
     dcjSecretName: hpcd-registry-tmax2-registry
     name: tmax2-registry
     namespace: reg-test
-    signer: yun
+  signer: yun

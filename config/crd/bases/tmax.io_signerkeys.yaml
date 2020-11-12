@@ -40,32 +40,34 @@ spec:
               description: Foo is an example field of SignerKey. Edit SignerKey_types.go
                 to remove/update
               properties:
+                id:
+                  type: string
                 key:
                   type: string
                 passPhrase:
                   type: string
-                value:
-                  type: string
               required:
+              - id
               - key
               - passPhrase
-              - value
               type: object
             targets:
               additionalProperties:
                 description: TrustKey defines key and value set
                 properties:
+                  id:
+                    type: string
                   key:
                     type: string
                   passPhrase:
                     type: string
-                  value:
-                    type: string
                 required:
+                - id
                 - key
                 - passPhrase
-                - value
                 type: object
+              description: 'Targets is {namespace/registryName/imageName: TrustKey{},
+                ...}'
               type: object
           type: object
         status:

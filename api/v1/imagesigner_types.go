@@ -39,6 +39,16 @@ type ImageSignerSpec struct {
 type ImageSignerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	SignerKeyState `json:"signerKeyState"`
+}
+
+type SignerKeyState struct {
+	Created   bool        `json:"created"`
+	Reason    string      `json:"reason,omitempty"`
+	Message   string      `json:"message,omitempty"`
+	RootKeyID string      `json:"rootKeyId"`
+	CreatedAt metav1.Time `json:"createdAt"`
 }
 
 // +kubebuilder:object:root=true

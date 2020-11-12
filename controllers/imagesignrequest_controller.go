@@ -87,7 +87,7 @@ func (r *ImageSignRequestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	}
 
 	//
-	signCtl := controller.NewSigningController(r.Client, signer, phrase, signReq.Spec.RegistryLogin.Name, "reg-test")
+	signCtl := controller.NewSigningController(r.Client, signer, phrase, signReq.Spec.RegistryLogin.Name, signReq.Spec.RegistryLogin.Namespace, req.Namespace)
 	cmdOpt := &controller.CommandOpt{
 		Phrase:                  signCtl.Phrase,
 		RegistryLoginSecret:     signReq.Spec.RegistryLogin.DcjSecretName,
@@ -101,11 +101,12 @@ func (r *ImageSignRequestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 		makeResponse(signReq, false, err.Error(), "")
 		return ctrl.Result{}, nil
 	}
-
-	if signCtl.IsRunnging {
-		log.Info("dind is running")
-	}
 	defer signCtl.Close()
+
+	if !signCtl.IsRunnging {
+		return ctrl.Result{}, nil
+	}
+	log.Info("dind is running")
 
 	log.Info("sign image")
 	imageName, imageTag := utils.ParseImage(signReq.Spec.Image)
@@ -143,22 +144,4 @@ func buildTargetName(signReq *tmaxiov1.ImageSignRequest) string {
 		signReq.Spec.RegistryLogin.Namespace,
 		imageName,
 	)
-}
-
-func response(c client.Client, signReq *tmaxiov1.ImageSignRequest) error {
-	if err := c.Status().Update(context.TODO(), signReq); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func makeResponse(signReq *tmaxiov1.ImageSignRequest, result bool, reason, message string) {
-	if result {
-		signReq.Status.Result = tmaxiov1.ResponseResultSuccess
-	} else {
-		signReq.Status.Result = tmaxiov1.ResponseResultFail
-	}
-	signReq.Status.Reason = reason
-	signReq.Status.Message = message
 }

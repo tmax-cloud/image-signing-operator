@@ -15,8 +15,10 @@ import (
 	"github.com/tmax-cloud/image-signing-operator/pkg/trust"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var log logr.Logger = ctrl.Log.WithName("signing-controller")
@@ -27,11 +29,14 @@ type CommandOpt struct {
 	ImagePvc                                     string
 }
 
-func NewSigningController(c client.Client, signer *apiv1.ImageSigner, phrase trust.TrustPass, regName, namespace string) *SigningController {
+// NewSigningController is a controller for image signing.
+// if registryName or registryNamespace is empty string, RegCtl is nil
+// if requestNamespace is empty string, get operator's namepsace
+func NewSigningController(c client.Client, signer *apiv1.ImageSigner, phrase trust.TrustPass, registryName, registryNamespace, requestNamespace string) *SigningController {
 	return &SigningController{
 		ImageSigner: signer,
-		Cmder:       NewKubeCommander(c, namespace, signer.Name+"-"+utils.RandomString(5)),
-		Regctl:      registry.NewRegCtl(c, regName, namespace),
+		Cmder:       NewKubeCommander(c, requestNamespace, signer.Name+"-"+utils.RandomString(5)),
+		Regctl:      registry.NewRegCtl(c, registryName, registryNamespace),
 		Phrase:      phrase,
 	}
 }
@@ -114,8 +119,8 @@ func (c *SigningController) readTrustKey(roleName trust.RoleType) (*apiv1.TrustK
 			return nil, err
 		}
 		if strings.Contains(readKeyOut.Outbuf.String(), "role: "+string(roleName)) {
-			trustKey.Key = key
-			trustKey.Value = readKeyOut.Outbuf.String()
+			trustKey.ID = key
+			trustKey.Key = readKeyOut.Outbuf.String()
 			trustKey.PassPhrase = c.Phrase[trust.RoleMap[roleName]]
 			keyFileFound = true
 			break
@@ -129,29 +134,29 @@ func (c *SigningController) readTrustKey(roleName trust.RoleType) (*apiv1.TrustK
 	return trustKey, nil
 }
 
-func (c *SigningController) CreateRootKey() error {
+func (c *SigningController) CreateRootKey(owner *apiv1.ImageSigner, scheme *runtime.Scheme) (*apiv1.TrustKey, error) {
 	log.Info("generate key")
 	out, err := c.Cmder.GenerateKey(string(trust.TrustRoleRoot))
 	if err != nil {
 		log.Error(err, "generate key err")
-		return err
+		return nil, err
 	}
 	log.Info("generate key success", "stdout", out.Outbuf.String(), "stderr", out.Errbuf.String())
 
 	rootKey, err := c.readTrustKey(trust.TrustRoleRoot)
 	if err != nil {
 		log.Error(err, "read key err")
-		return err
+		return nil, err
 	}
 
 	log.Info("create root key")
-	if err := c.createRootKey(rootKey); err != nil {
+	if err := c.createRootKey(owner, scheme, rootKey); err != nil {
 		log.Error(err, "")
-		return err
+		return nil, err
 	}
 
 	log.Info("create root key success")
-	return nil
+	return rootKey, nil
 }
 
 func (c *SigningController) AddTargetKey(originalKey *apiv1.SignerKey, targetName string, phrase trust.TrustPass) error {
@@ -174,8 +179,12 @@ func (c *SigningController) AddTargetKey(originalKey *apiv1.SignerKey, targetNam
 	return nil
 }
 
-func (c *SigningController) createRootKey(trustKey *apiv1.TrustKey) error {
+func (c *SigningController) createRootKey(owner *apiv1.ImageSigner, scheme *runtime.Scheme, trustKey *apiv1.TrustKey) error {
 	key := schemes.SignerKey(c.ImageSigner)
+	if err := controllerutil.SetOwnerReference(owner, key, scheme); err != nil {
+		return err
+	}
+
 	key.Spec = apiv1.SignerKeySpec{
 		Root: *trustKey,
 	}

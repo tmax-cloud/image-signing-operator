@@ -55,6 +55,10 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
+	if len(os.Getenv("OPERATOR_NAMESPACE")) == 0 {
+		os.Setenv("OPERATOR_NAMESPACE", "registry-system")
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
