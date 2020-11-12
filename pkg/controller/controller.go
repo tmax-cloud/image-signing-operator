@@ -24,7 +24,8 @@ import (
 var log logr.Logger = ctrl.Log.WithName("signing-controller")
 
 type CommandOpt struct {
-	Phrase                                       trust.TrustPass
+	RootKey                                      *apiv1.TrustKey
+	TargetKey                                    *apiv1.TrustKey
 	RegistryLoginSecret, RegistryLoginCertSecret string
 	ImagePvc                                     string
 }
@@ -32,12 +33,11 @@ type CommandOpt struct {
 // NewSigningController is a controller for image signing.
 // if registryName or registryNamespace is empty string, RegCtl is nil
 // if requestNamespace is empty string, get operator's namepsace
-func NewSigningController(c client.Client, signer *apiv1.ImageSigner, phrase trust.TrustPass, registryName, registryNamespace, requestNamespace string) *SigningController {
+func NewSigningController(c client.Client, signer *apiv1.ImageSigner, registryName, registryNamespace, requestNamespace string) *SigningController {
 	return &SigningController{
 		ImageSigner: signer,
-		Cmder:       NewKubeCommander(c, requestNamespace, signer.Name+"-"+utils.RandomString(5)),
+		Cmder:       NewKubeCommander(c, requestNamespace, "image-signing-by-"+signer.Name+"-"+utils.RandomString(10)),
 		Regctl:      registry.NewRegCtl(c, registryName, registryNamespace),
-		Phrase:      phrase,
 	}
 }
 
@@ -45,22 +45,47 @@ type SigningController struct {
 	ImageSigner *apiv1.ImageSigner
 	Cmder       *KubeCommander
 	Regctl      *registry.RegCtl
-	Phrase      trust.TrustPass
 	startedPod  *corev1.Pod
 	IsRunnging  bool
 }
 
+func storeFileShellCommand(filename, contents string) string {
+	cmd := []string{"echo", "\"" + contents + "\"", ">", path.Join(PrivateKeyDir, filename)}
+
+	return strings.Join(cmd, " ")
+}
+
 func (c *SigningController) Start(cmdOpt *CommandOpt) error {
+	lifeCycleCmds := []string{}
+	envs := map[string]string{}
+
+	addEnvAndCmd := func(trustKey *apiv1.TrustKey, roleName trust.RoleType) {
+		if trustKey != nil {
+			if len(trustKey.PassPhrase) > 0 {
+				envs[trust.RoleMap[roleName]] = trustKey.PassPhrase
+			}
+			if len(trustKey.ID) > 0 && len(trustKey.Key) > 0 {
+				lifeCycleCmds = append(lifeCycleCmds, storeFileShellCommand(trustKey.ID, trustKey.Key))
+			}
+		}
+	}
+
+	addEnvAndCmd(cmdOpt.RootKey, trust.TrustRoleRoot)
+	addEnvAndCmd(cmdOpt.TargetKey, trust.TrustRoleTarget)
+	if len(cmdOpt.RegistryLoginSecret) > 0 {
+		lifeCycleCmds = append(lifeCycleCmds, "cp /home/dockremap/.dockerconfigjson /root/.docker/config.json")
+	}
+
 	c.startedPod = schemes.NewDindPod(
 		c.Cmder.namespace,
 		c.Cmder.pod,
 		c.Cmder.container,
 		"",
-		schemes.WithEnv(cmdOpt.Phrase),
+		schemes.WithEnv(envs),
 		schemes.WithPvc(cmdOpt.ImagePvc),
 		schemes.WithDcjSecret(cmdOpt.RegistryLoginSecret),
 		schemes.WithCertSecret(cmdOpt.RegistryLoginCertSecret),
-		schemes.WithLifeCycle(),
+		schemes.WithLifeCycle(lifeCycleCmds),
 	)
 
 	if err := c.Cmder.client.Create(context.TODO(), c.startedPod); err != nil {
@@ -93,12 +118,12 @@ func (c *SigningController) Close() error {
 	if err := c.Cmder.client.Delete(context.TODO(), c.startedPod); err != nil {
 		return err
 	}
-	log.Info("closed", "pod/namespace", c.startedPod.Name+"/"+c.startedPod.Namespace)
+	log.Info("dind closed", "pod/namespace", c.startedPod.Name+"/"+c.startedPod.Namespace)
 
 	return nil
 }
 
-func (c *SigningController) readTrustKey(roleName trust.RoleType) (*apiv1.TrustKey, error) {
+func (c *SigningController) readTrustKey(phrase trust.TrustPass, roleName trust.RoleType) (*apiv1.TrustKey, error) {
 	log.Info("list key")
 	out, err := c.Cmder.ListKey()
 	if err != nil {
@@ -121,7 +146,7 @@ func (c *SigningController) readTrustKey(roleName trust.RoleType) (*apiv1.TrustK
 		if strings.Contains(readKeyOut.Outbuf.String(), "role: "+string(roleName)) {
 			trustKey.ID = key
 			trustKey.Key = readKeyOut.Outbuf.String()
-			trustKey.PassPhrase = c.Phrase[trust.RoleMap[roleName]]
+			trustKey.PassPhrase = phrase[trust.RoleMap[roleName]]
 			keyFileFound = true
 			break
 		}
@@ -134,7 +159,7 @@ func (c *SigningController) readTrustKey(roleName trust.RoleType) (*apiv1.TrustK
 	return trustKey, nil
 }
 
-func (c *SigningController) CreateRootKey(owner *apiv1.ImageSigner, scheme *runtime.Scheme) (*apiv1.TrustKey, error) {
+func (c *SigningController) CreateRootKey(phrase trust.TrustPass, owner *apiv1.ImageSigner, scheme *runtime.Scheme) (*apiv1.TrustKey, error) {
 	log.Info("generate key")
 	out, err := c.Cmder.GenerateKey(string(trust.TrustRoleRoot))
 	if err != nil {
@@ -143,7 +168,7 @@ func (c *SigningController) CreateRootKey(owner *apiv1.ImageSigner, scheme *runt
 	}
 	log.Info("generate key success", "stdout", out.Outbuf.String(), "stderr", out.Errbuf.String())
 
-	rootKey, err := c.readTrustKey(trust.TrustRoleRoot)
+	rootKey, err := c.readTrustKey(phrase, trust.TrustRoleRoot)
 	if err != nil {
 		log.Error(err, "read key err")
 		return nil, err
@@ -160,7 +185,7 @@ func (c *SigningController) CreateRootKey(owner *apiv1.ImageSigner, scheme *runt
 }
 
 func (c *SigningController) AddTargetKey(originalKey *apiv1.SignerKey, targetName string, phrase trust.TrustPass) error {
-	targetKey, err := c.readTrustKey(trust.TrustRoleTarget)
+	targetKey, err := c.readTrustKey(phrase, trust.TrustRoleTarget)
 	if err != nil {
 		log.Error(err, "read key error")
 		return err

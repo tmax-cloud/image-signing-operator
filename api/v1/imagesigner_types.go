@@ -40,7 +40,7 @@ type ImageSignerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	SignerKeyState `json:"signerKeyState"`
+	*SignerKeyState `json:"signerKeyState,omitempty"`
 }
 
 type SignerKeyState struct {
@@ -53,7 +53,7 @@ type SignerKeyState struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:resource:scope=Cluster,shortName=is
 
 // ImageSigner is the Schema for the imagesigners API
 type ImageSigner struct {

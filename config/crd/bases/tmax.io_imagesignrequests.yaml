@@ -13,6 +13,8 @@ spec:
     kind: ImageSignRequest
     listKind: ImageSignRequestList
     plural: imagesignrequests
+    shortNames:
+    - isr
     singular: imagesignrequest
   scope: Namespaced
   subresources:

@@ -24,10 +24,12 @@ type TrustPass map[string]string
 
 func NewTrustPass() TrustPass {
 	pass := make(TrustPass)
-	pass[DctEnvKeyRoot] = utils.RandomString(12)
-	pass[DctEnvKeyTarget] = utils.RandomString(12)
 
 	return pass
+}
+
+func (t TrustPass) AssignNewRootPass() {
+	t[DctEnvKeyRoot] = utils.RandomString(12)
 }
 
 func (t TrustPass) AssignNewTargetPass() {

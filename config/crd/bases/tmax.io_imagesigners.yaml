@@ -13,6 +13,8 @@ spec:
     kind: ImageSigner
     listKind: ImageSignerList
     plural: imagesigners
+    shortNames:
+    - is
     singular: imagesigner
   scope: Cluster
   subresources:
@@ -68,8 +70,6 @@ spec:
               - createdAt
               - rootKeyId
               type: object
-          required:
-          - signerKeyState
           type: object
       type: object
   version: v1

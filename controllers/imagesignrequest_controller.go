@@ -50,7 +50,10 @@ func (r *ImageSignRequestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	signReq := &tmaxiov1.ImageSignRequest{}
 	if err := r.Get(context.TODO(), req.NamespacedName, signReq); err != nil {
 		log.Error(err, "")
-		makeResponse(signReq, false, err.Error(), "")
+		return ctrl.Result{}, nil
+	}
+
+	if signReq.Status.ImageSignResponse != nil {
 		return ctrl.Result{}, nil
 	}
 
@@ -74,22 +77,27 @@ func (r *ImageSignRequestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 		return ctrl.Result{}, nil
 	}
 
-	// get trust pass
-	log.Info("get trust pass")
-	phrase := make(trust.TrustPass)
+	// get trust key
+	log.Info("get trust key")
+	rootKey := signerKey.Spec.Root
+	var targetKey tmaxiov1.TrustKey
+
 	addedTargetKey := false
-	phrase[trust.DctEnvKeyRoot] = signerKey.Spec.Root.PassPhrase
-	if _, ok := signerKey.Spec.Targets[buildTargetName(signReq)]; ok {
-		phrase[trust.DctEnvKeyTarget] = signerKey.Spec.Targets[signReq.Spec.Image].PassPhrase
+	targetName := buildTargetName(signReq)
+	if _, ok := signerKey.Spec.Targets[targetName]; ok {
+		targetKey = signerKey.Spec.Targets[targetName]
 	} else {
+		phrase := trust.NewTrustPass()
 		phrase.AssignNewTargetPass()
+		targetKey.PassPhrase = phrase[trust.DctEnvKeyTarget]
 		addedTargetKey = true
 	}
 
 	//
-	signCtl := controller.NewSigningController(r.Client, signer, phrase, signReq.Spec.RegistryLogin.Name, signReq.Spec.RegistryLogin.Namespace, req.Namespace)
+	signCtl := controller.NewSigningController(r.Client, signer, signReq.Spec.RegistryLogin.Name, signReq.Spec.RegistryLogin.Namespace, req.Namespace)
 	cmdOpt := &controller.CommandOpt{
-		Phrase:                  signCtl.Phrase,
+		RootKey:                 &rootKey,
+		TargetKey:               &targetKey,
 		RegistryLoginSecret:     signReq.Spec.RegistryLogin.DcjSecretName,
 		RegistryLoginCertSecret: signReq.Spec.RegistryLogin.CertSecretName,
 		ImagePvc:                signReq.Spec.PvcName,
@@ -99,9 +107,10 @@ func (r *ImageSignRequestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	if err := signCtl.Start(cmdOpt); err != nil {
 		log.Error(err, "dind container start failed")
 		makeResponse(signReq, false, err.Error(), "")
+		// signCtl.Close()
 		return ctrl.Result{}, nil
 	}
-	defer signCtl.Close()
+	// defer signCtl.Close()
 
 	if !signCtl.IsRunnging {
 		return ctrl.Result{}, nil
@@ -117,6 +126,8 @@ func (r *ImageSignRequestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 
 	if addedTargetKey {
 		log.Info("add target key to signerkey")
+		phrase := trust.NewTrustPass()
+		phrase[trust.DctEnvKeyTarget] = targetKey.PassPhrase
 		if err := signCtl.AddTargetKey(
 			signerKey,
 			buildTargetName(signReq),
