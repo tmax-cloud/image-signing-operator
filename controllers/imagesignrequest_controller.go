@@ -107,10 +107,10 @@ func (r *ImageSignRequestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	if err := signCtl.Start(cmdOpt); err != nil {
 		log.Error(err, "dind container start failed")
 		makeResponse(signReq, false, err.Error(), "")
-		// signCtl.Close()
+		signCtl.Close()
 		return ctrl.Result{}, nil
 	}
-	// defer signCtl.Close()
+	defer signCtl.Close()
 
 	if !signCtl.IsRunnging {
 		return ctrl.Result{}, nil
