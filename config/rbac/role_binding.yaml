@@ -5,8 +5,8 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: manager-role
+  name: registry-manager-role
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: system
+  namespace: registry-system

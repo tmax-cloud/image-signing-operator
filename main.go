@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"github.com/tmax-cloud/image-signing-operator/pkg/apiserver"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -91,6 +92,10 @@ func main() {
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
+
+	// API Server
+	apiServer := apiserver.New()
+	go apiServer.Start()
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
