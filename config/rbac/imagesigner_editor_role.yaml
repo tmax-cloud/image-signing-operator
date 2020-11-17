@@ -1,20 +1,24 @@
-# permissions for end users to view imagesigns.
+# permissions for end users to edit imagesigners.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: imagesign-viewer-role
+  name: imagesigner-editor-role
 rules:
 - apiGroups:
   - tmax.io
   resources:
-  - imagesigns
+  - imagesigners
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - tmax.io
   resources:
-  - imagesigns/status
+  - imagesigners/status
   verbs:
   - get

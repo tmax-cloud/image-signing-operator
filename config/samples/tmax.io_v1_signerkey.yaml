@@ -1,7 +1,7 @@
 apiVersion: tmax.io/v1
-kind: ImageSign
+kind: SignerKey
 metadata:
-  name: imagesign-sample
+  name: signerkey-sample
 spec:
   # Add fields here
   foo: bar

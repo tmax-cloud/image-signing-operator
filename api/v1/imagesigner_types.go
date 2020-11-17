@@ -23,42 +23,56 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// ImageSignSpec defines the desired state of ImageSign
-type ImageSignSpec struct {
+// ImageSignerSpec defines the desired state of ImageSigner
+type ImageSignerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of ImageSign. Edit ImageSign_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Email       string `json:"email,omitempty"`
+	Phone       string `json:"phone,omitempty"`
+	Team        string `json:"team,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
-// ImageSignStatus defines the observed state of ImageSign
-type ImageSignStatus struct {
+// ImageSignerStatus defines the observed state of ImageSigner
+type ImageSignerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	*SignerKeyState `json:"signerKeyState,omitempty"`
+}
+
+type SignerKeyState struct {
+	Created   bool        `json:"created"`
+	Reason    string      `json:"reason,omitempty"`
+	Message   string      `json:"message,omitempty"`
+	RootKeyID string      `json:"rootKeyId"`
+	CreatedAt metav1.Time `json:"createdAt"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster,shortName=is
 
-// ImageSign is the Schema for the imagesigns API
-type ImageSign struct {
+// ImageSigner is the Schema for the imagesigners API
+type ImageSigner struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ImageSignSpec   `json:"spec,omitempty"`
-	Status ImageSignStatus `json:"status,omitempty"`
+	Spec   ImageSignerSpec   `json:"spec,omitempty"`
+	Status ImageSignerStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// ImageSignList contains a list of ImageSign
-type ImageSignList struct {
+// ImageSignerList contains a list of ImageSigner
+type ImageSignerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ImageSign `json:"items"`
+	Items           []ImageSigner `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&ImageSign{}, &ImageSignList{})
+	SchemeBuilder.Register(&ImageSigner{}, &ImageSignerList{})
 }
