@@ -3,8 +3,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
-  name: manager-role
+  name: registry-manager-role
 rules:
 - apiGroups:
   - tmax.io
@@ -46,3 +45,47 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - tmax.io
+  resources:
+  - signerkeys
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - tmax.io
+  resources:
+  - signerkeys/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - apiregistration.k8s.io
+  resourceNames:
+  - v1.registry.tmax.io
+  resources:
+  - apiservices
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+- apiGroups:
+  - ''
+  resources:
+  - configmaps
+  resourceNames:
+  - extension-apiserver-authentication
+  verbs:
+  - get
